@@ -94,6 +94,9 @@ input::placeholder{color:var(--text2)}
 .player-top{padding:16px}
 .player-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .player-name{font-size:18px;font-weight:700}
+.player-actions{display:flex;gap:6px}
+.player-actions button{width:32px;height:32px;border-radius:8px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:14px}
+.player-actions button:hover{background:var(--surface2)}
 .player-clips{font-size:12px;color:var(--text2);background:var(--surface3);padding:4px 10px;border-radius:12px}
 .player-toggle{width:100%;padding:16px;border-radius:var(--radius-sm);font-size:16px;font-weight:700;transition:all .15s;position:relative;overflow:hidden;text-transform:uppercase;letter-spacing:1px}
 .player-toggle.idle{background:var(--surface3);color:var(--text2)}
@@ -105,8 +108,41 @@ input::placeholder{color:var(--text2)}
 .player-intervals-toggle{width:100%;padding:10px 16px;background:var(--surface2);font-size:13px;color:var(--text2);text-align:left;display:flex;justify-content:space-between;align-items:center}
 .intervals-list{background:var(--surface2);padding:0 16px;max-height:0;overflow:hidden;transition:max-height .3s}
 .intervals-list.open{max-height:500px}
-.intervals-list .interval{padding:8px 0;border-bottom:1px solid var(--surface3);font-size:13px;display:flex;justify-content:space-between;font-family:'SF Mono',monospace}
+.intervals-list .interval{padding:8px 0;border-bottom:1px solid var(--surface3);font-size:13px;display:flex;justify-content:space-between;font-family:'SF Mono',monospace;align-items:center}
 .intervals-list .interval:last-child{border-bottom:none}
+.interval-main{display:flex;flex-direction:column;gap:2px}
+.interval-times{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+.interval-half{font-size:11px;background:var(--surface3);padding:2px 6px;border-radius:4px}
+.interval-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.interval-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.interval-tag .remove{font-size:10px;opacity:.7;cursor:pointer}
+.interval-tag .remove:hover{opacity:1}
+.interval-actions{display:flex;gap:4px}
+.interval-actions button{width:26px;height:26px;border-radius:6px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:12px}
+
+/* Edit intervals modal */
+.edit-intervals-modal .modal{max-height:85vh}
+.edit-interval-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--surface2);padding:12px;border-radius:var(--radius-sm)}
+.edit-interval-row .half-select{width:50px;height:36px;background:var(--surface3);border:none;border-radius:6px;color:var(--text);font-size:12px;font-weight:700;text-align:center}
+.edit-interval-row .time-input{flex:1;padding:10px;font-size:14px;font-family:'SF Mono',monospace}
+.edit-interval-row .btn-del{width:36px;height:36px;background:var(--red);color:#fff;border-radius:8px;font-size:16px;display:flex;align-items:center;justify-content:center}
+.edit-interval-row .drag-handle{width:24px;height:24px;color:var(--text2);font-size:14px;cursor:grab}
+.add-interval-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;background:var(--surface2);border-radius:var(--radius-sm);font-size:14px;font-weight:600;color:var(--green);margin-bottom:16px}
+.add-interval-btn:hover{background:var(--surface3)}
+.interval-tags-edit{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--surface3)}
+.interval-tags-edit .tag-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;font-size:12px;font-weight:600;color:#fff}
+.interval-tags-edit .tag-chip .x{cursor:pointer;font-size:10px;opacity:.7}
+
+/* Tags modal */
+.tags-modal .color-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:16px}
+.tags-modal .color-btn{aspect-ratio:1;border-radius:50%;border:3px solid transparent;transition:transform .2s}
+.tags-modal .color-btn:hover{transform:scale(1.1)}
+.tags-modal .color-btn.selected{border-color:#fff}
+.tags-modal .quick-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.tags-modal .quick-tag{padding:8px 14px;border-radius:20px;font-size:13px;font-weight:600;background:var(--surface3);color:var(--text)}
+.tags-modal .quick-tag:hover{background:var(--surface2)}
+.tags-modal .custom-tag-row{display:flex;gap:8px}
+.tags-modal .custom-tag-row input{flex:1}
 
 /* Sync modal */
 .sync-modal-content{text-align:center;padding:10px 0}
@@ -142,6 +178,9 @@ input::placeholder{color:var(--text2)}
 .time-format-toggle{display:flex;justify-content:center;gap:4px;margin-bottom:12px}
 .time-format-toggle button{padding:6px 12px;font-size:11px;font-weight:600;border-radius:6px;background:var(--surface3);color:var(--text2);transition:all .2s}
 .time-format-toggle button.active{background:var(--green);color:#000}
+
+/* Version badge */
+.version-badge{position:fixed;bottom:8px;right:12px;font-size:11px;color:var(--text2);background:var(--surface2);padding:4px 10px;border-radius:10px;z-index:50}
 </style>
 </head>
 <body>
@@ -157,6 +196,7 @@ input::placeholder{color:var(--text2)}
     <span style="font-size:22px">+</span> Nuevo Partido
   </button>
   <div class="match-list" id="matchList"></div>
+  <div class="version-badge" id="versionBadge">v1.1</div>
 </div>
 
 <!-- MATCH SCREEN -->
@@ -188,6 +228,7 @@ input::placeholder{color:var(--text2)}
     </div>
     <div id="playersList"></div>
   </div>
+  <div class="version-badge" id="versionBadgeMatch">v1.1</div>
 </div>
 
 <!-- NEW MATCH MODAL -->
@@ -267,11 +308,46 @@ input::placeholder{color:var(--text2)}
   </div>
 </div>
 
+<!-- EDIT INTERVALS MODAL -->
+<div class="modal-overlay edit-intervals-modal" id="editIntervalsModal" onclick="closeModalOverlay(event,'editIntervalsModal')">
+  <div class="modal">
+    <h2 id="editIntervalsTitle">Editar Intervalos</h2>
+    <div id="editIntervalsList"></div>
+    <button class="add-interval-btn" onclick="addNewInterval()">+ Agregar Intervalo</button>
+    <button class="btn-create" onclick="saveEditedIntervals()">Guardar Cambios</button>
+  </div>
+</div>
+
+<!-- TAGS MODAL -->
+<div class="modal-overlay tags-modal" id="tagsModal">
+  <div class="modal">
+    <h2>Agregar Etiqueta</h2>
+    <div class="field">
+      <label>Color</label>
+      <div class="color-grid" id="colorGrid"></div>
+    </div>
+    <div class="field">
+      <label>Etiquetas rápidas</label>
+      <div class="quick-tags" id="quickTags"></div>
+    </div>
+    <div class="field">
+      <label>Personalizada</label>
+      <div class="custom-tag-row">
+        <input id="customTagInput" placeholder="Nueva etiqueta..." autocomplete="off">
+        <button onclick="addCustomTag()" style="width:48px;background:var(--green);color:#000;border-radius:var(--radius-sm);font-size:20px;font-weight:700">+</button>
+      </div>
+    </div>
+    <div class="interval-tags-edit" id="currentTagsList"></div>
+    <button class="btn-create" onclick="closeModal('tagsModal')">Listo</button>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
 // State
+const APP_VERSION = "1.1";
 let matches = JSON.parse(localStorage.getItem('fc_matches') || '[]');
 let currentMatchId = null;
 let timerInterval = null;
@@ -279,12 +355,43 @@ let timerRunning = false;
 let currentHalf = 1;
 let chipPlayers = [];
 
+// Edit intervals state
+let editingPlayerIndex = null;
+let editingIntervalIndex = null;
+let editedIntervals = [];
+
+// Tags state
+let currentTagColor = '#e74c3c';
+let currentTagPlayerIdx = null;
+let currentTagIntervalIdx = null;
+
+// Tag colors and presets
+const TAG_COLORS = [
+  { name: 'Rojo', color: '#e74c3c' },
+  { name: 'Azul', color: '#3498db' },
+  { name: 'Verde', color: '#2ecc71' },
+  { name: 'Amarillo', color: '#f1c40f' },
+  { name: 'Naranja', color: '#e67e22' },
+  { name: 'Violeta', color: '#9b59b6' },
+  { name: 'Rosa', color: '#e91e63' }
+];
+
+const TAG_PRESETS = [
+  { text: 'Gol', color: '#2ecc71' },
+  { text: 'Asistencia', color: '#3498db' },
+  { text: 'Regate', color: '#9b59b6' },
+  { text: 'Tiro', color: '#e74c3c' },
+  { text: 'Pase clave', color: '#f1c40f' },
+  { text: 'Defensa', color: '#e67e22' }
+];
+
 const $ = id => document.getElementById(id);
 const vibe = (ms=10) => { try { navigator.vibrate(ms) } catch(e){} };
 const save = () => {
   localStorage.setItem('fc_matches', JSON.stringify(matches));
   if (currentMatchId) localStorage.setItem('fc_currentMatch', currentMatchId);
 };
+
 function getTimerSeconds() {
   const m = currentMatch();
   if (!m) return 0;
@@ -305,6 +412,19 @@ function toast(msg) {
 
 function getMatch(id) { return matches.find(m => m.id === id); }
 function currentMatch() { return getMatch(currentMatchId); }
+
+// Generate unique interval ID
+function generateIntervalId() {
+  const m = currentMatch();
+  if (!m) return Date.now();
+  let maxId = 0;
+  m.players.forEach(p => {
+    p.intervals.forEach(iv => {
+      if (iv.id && iv.id > maxId) maxId = iv.id;
+    });
+  });
+  return maxId + 1;
+}
 
 // Render home
 function renderHome() {
@@ -420,6 +540,13 @@ function openMatch(id, skipVibe) {
   if (m.timeFormat === undefined) {
     m.timeFormat = 'standard';
   }
+  // Migrate intervals to include tags and id
+  m.players.forEach(p => {
+    p.intervals.forEach(iv => {
+      if (iv.id === undefined) iv.id = generateIntervalId();
+      if (!iv.tags) iv.tags = [];
+    });
+  });
   currentHalf = m.currentHalf || 1;
   timerRunning = false;
   // Restore running timer
@@ -546,7 +673,6 @@ function updatePlayBtn() {
 function setHalf(h) {
   vibe();
   if (h === currentHalf) return;
-  // Pause timer when switching halves
   const wasRunning = timerRunning;
   if (wasRunning) {
     clearInterval(timerInterval);
@@ -605,7 +731,10 @@ function renderPlayers() {
       <div class="player-top">
         <div class="player-info">
           <span class="player-name">${esc(p.name)}</span>
-          <span class="player-clips">${clipCount} clip${clipCount !== 1 ? 's' : ''}</span>
+          <div class="player-actions">
+            <button onclick="openEditIntervals(${i})" title="Editar intervalos">✏️</button>
+            <span class="player-clips">${clipCount} clip${clipCount !== 1 ? 's' : ''}</span>
+          </div>
         </div>
         <button class="player-toggle ${isRec ? 'active' : 'idle'}" onclick="togglePlayer(${i})">
           ${isRec ? '⏹ DETENER' : '⏺ MARCAR'}
@@ -616,7 +745,20 @@ function renderPlayers() {
         <span>Intervalos (${clipCount})</span><span id="arrow${i}">▼</span>
       </button>
       <div class="intervals-list" id="intervals${i}">
-        ${p.intervals.map((iv, j) => `<div class="interval"><span>${formatTimer(iv.start, iv.half || 1, fmt)} → ${formatTimer(iv.end, iv.half || 1, fmt)}</span><span>${iv.half || 1}T</span></div>`).join('')}
+        ${p.intervals.map((iv, j) => `<div class="interval">
+          <div class="interval-main">
+            <div class="interval-times">
+              <span>${formatTimer(iv.start, iv.half || 1, fmt)} → ${formatTimer(iv.end, iv.half || 1, fmt)}</span>
+              <span class="interval-half">${iv.half || 1}T</span>
+            </div>
+            ${iv.tags && iv.tags.length ? `<div class="interval-tags">
+              ${iv.tags.map(t => `<span class="interval-tag" style="background:${t.color}">${esc(t.text)}</span>`).join('')}
+            </div>` : ''}
+          </div>
+          <div class="interval-actions">
+            <button onclick="openTagsModal(${i}, ${j})" title="Agregar etiqueta">🏷</button>
+          </div>
+        </div>`).join('')}
       </div>` : ''}
       <div class="player-delete-zone"><button class="player-delete-btn" onclick="deletePlayer(${i})">Eliminar jugador</button></div>
     </div>`;
@@ -629,7 +771,7 @@ function togglePlayer(i) {
   const p = m.players[i];
   const ts = getTimerSeconds();
   if (p.recording) {
-    p.intervals.push({ start: p.startTime, end: ts, half: p.startHalf || currentHalf });
+    p.intervals.push({ id: generateIntervalId(), start: p.startTime, end: ts, half: p.startHalf || currentHalf, tags: [] });
     p.recording = false;
     p.startTime = null;
     p.startHalf = null;
@@ -684,7 +826,7 @@ function stopAllRecordings() {
   const ts = getTimerSeconds();
   m.players.forEach(p => {
     if (p.recording) {
-      p.intervals.push({ start: p.startTime, end: ts, half: p.startHalf || currentHalf });
+      p.intervals.push({ id: generateIntervalId(), start: p.startTime, end: ts, half: p.startHalf || currentHalf, tags: [] });
       p.recording = false;
       p.startTime = null;
       p.startHalf = null;
@@ -717,6 +859,159 @@ function addPlayerToMatch() {
 
 $('addPlayerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayerToMatch(); });
 
+// Edit intervals modal
+function openEditIntervals(playerIdx) {
+  vibe();
+  editingPlayerIndex = playerIdx;
+  const m = currentMatch();
+  const player = m.players[playerIdx];
+  $('editIntervalsTitle').textContent = `Editar: ${player.name}`;
+  editedIntervals = JSON.parse(JSON.stringify(player.intervals));
+  renderEditIntervalsList();
+  openModal('editIntervalsModal');
+}
+
+function renderEditIntervalsList() {
+  $('editIntervalsList').innerHTML = editedIntervals.map((iv, i) => `
+    <div class="edit-interval-row">
+      <span class="drag-handle">☰</span>
+      <select class="half-select" onchange="updateInterval(${i}, 'half', this.value)">
+        <option value="1" ${iv.half === 1 ? 'selected' : ''}>1T</option>
+        <option value="2" ${iv.half === 2 ? 'selected' : ''}>2T</option>
+      </select>
+      <input type="text" class="time-input" value="${formatSec(iv.start)}" onchange="updateInterval(${i}, 'start', this.value)" placeholder="00:00">
+      <span>→</span>
+      <input type="text" class="time-input" value="${formatSec(iv.end)}" onchange="updateInterval(${i}, 'end', this.value)" placeholder="00:00">
+      <button class="btn-del" onclick="deleteInterval(${i})">✕</button>
+    </div>
+    <div class="interval-tags-edit">
+      ${(iv.tags || []).map((t, j) => `<span class="tag-chip" style="background:${t.color}">${esc(t.text)}<span class="x" onclick="removeTagFromInterval(${i}, ${j})">✕</span></span>`).join('')}
+      <button onclick="openTagsModalFromEdit(${i})" style="font-size:12px;color:var(--green);background:none">+ Etiqueta</button>
+    </div>
+  `).join('');
+}
+
+function updateInterval(idx, field, value) {
+  if (field === 'half') {
+    editedIntervals[idx].half = parseInt(value);
+  } else {
+    const parts = value.split(':');
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      editedIntervals[idx][field] = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+    }
+  }
+}
+
+function deleteInterval(idx) {
+  vibe();
+  editedIntervals.splice(idx, 1);
+  renderEditIntervalsList();
+}
+
+function addNewInterval() {
+  vibe();
+  const ts = getTimerSeconds();
+  editedIntervals.push({ id: generateIntervalId(), start: Math.max(0, ts - 30), end: ts, half: currentHalf, tags: [] });
+  renderEditIntervalsList();
+}
+
+function openTagsModalFromEdit(intervalIdx) {
+  currentTagPlayerIdx = editingPlayerIndex;
+  currentTagIntervalIdx = intervalIdx;
+  openTagsModalInternal(intervalIdx, true);
+}
+
+function saveEditedIntervals() {
+  const m = currentMatch();
+  m.players[editingPlayerIndex].intervals = editedIntervals;
+  save();
+  closeModal('editIntervalsModal');
+  renderPlayers();
+  toast('Intervalos guardados');
+}
+
+// Tags modal
+function openTagsModal(playerIdx, intervalIdx) {
+  currentTagPlayerIdx = playerIdx;
+  currentTagIntervalIdx = intervalIdx;
+  openTagsModalInternal(intervalIdx, false);
+}
+
+function openTagsModalInternal(intervalIdx, fromEdit) {
+  vibe();
+  const m = currentMatch();
+  const player = m.players[currentTagPlayerIdx];
+  const interval = fromEdit ? editedIntervals[intervalIdx] : player.intervals[intervalIdx];
+  if (!interval.tags) interval.tags = [];
+  
+  // Render color grid
+  $('colorGrid').innerHTML = TAG_COLORS.map(c => 
+    `<button class="color-btn ${currentTagColor === c.color ? 'selected' : ''}" style="background:${c.color}" onclick="selectColor('${c.color}')"></button>`
+  ).join('');
+  
+  // Render quick tags
+  $('quickTags').innerHTML = TAG_PRESETS.map(t => 
+    `<button class="quick-tag" style="background:${t.color}" onclick="addPresetTag('${t.text}', '${t.color}')">${t.text}</button>`
+  ).join('');
+  
+  // Render current tags
+  renderCurrentTags(interval);
+  
+  $('customTagInput').value = '';
+  openModal('tagsModal');
+}
+
+function selectColor(color) {
+  currentTagColor = color;
+  $('colorGrid').innerHTML = TAG_COLORS.map(c => 
+    `<button class="color-btn ${currentTagColor === c.color ? 'selected' : ''}" style="background:${c.color}" onclick="selectColor('${c.color}')"></button>`
+  ).join('');
+}
+
+function addPresetTag(text, color) {
+  const m = currentMatch();
+  const player = m.players[currentTagPlayerIdx];
+  const interval = player.intervals[currentTagIntervalIdx];
+  if (!interval.tags) interval.tags = [];
+  interval.tags.push({ text, color });
+  renderCurrentTags(interval);
+  toast(`"${text}" agregado`);
+}
+
+function addCustomTag() {
+  const text = $('customTagInput').value.trim();
+  if (!text) return;
+  const m = currentMatch();
+  const player = m.players[currentTagPlayerIdx];
+  const interval = player.intervals[currentTagIntervalIdx];
+  if (!interval.tags) interval.tags = [];
+  interval.tags.push({ text, color: currentTagColor });
+  $('customTagInput').value = '';
+  renderCurrentTags(interval);
+  toast(`"${text}" agregado`);
+}
+
+function renderCurrentTags(interval) {
+  $('currentTagsList').innerHTML = (interval.tags || []).map((t, i) => 
+    `<span class="tag-chip" style="background:${t.color}">${esc(t.text)}<span class="x" onclick="removeTag(${i})">✕</span></span>`
+  ).join('');
+}
+
+function removeTag(idx) {
+  const m = currentMatch();
+  const player = m.players[currentTagPlayerIdx];
+  const interval = player.intervals[currentTagIntervalIdx];
+  interval.tags.splice(idx, 1);
+  renderCurrentTags(interval);
+}
+
+function removeTagFromInterval(intervalIdx, tagIdx) {
+  editedIntervals[intervalIdx].tags.splice(tagIdx, 1);
+  renderEditIntervalsList();
+}
+
+$('customTagInput').addEventListener('keydown', e => { if (e.key === 'Enter') addCustomTag(); });
+
 // Export
 function openExportModal() { vibe(); openModal('exportModal'); }
 
@@ -725,12 +1020,15 @@ function getExportData() {
   return {
     match: m.name,
     date: m.date,
+    appVersion: APP_VERSION,
     players: m.players.map(p => ({
       name: p.name,
       intervals: p.intervals.map(iv => ({
+        id: iv.id,
         start: formatSec(iv.start),
         end: formatSec(iv.end),
-        half: iv.half || 1
+        half: iv.half || 1,
+        tags: iv.tags || []
       }))
     }))
   };
@@ -751,7 +1049,8 @@ function doExport(fmt) {
       txt += `▸ ${p.name} (${p.intervals.length} clips)\n`;
       if (!p.intervals.length) { txt += '  (sin clips)\n'; }
       p.intervals.forEach(iv => {
-        txt += `  ${iv.half}T  ${iv.start} → ${iv.end}\n`;
+        const tagsStr = iv.tags.length ? ` [${iv.tags.map(t => t.text).join(', ')}]` : '';
+        txt += `  ${iv.half}T  ${iv.start} → ${iv.end}${tagsStr}\n`;
       });
       txt += '\n';
     });
