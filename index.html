@@ -161,7 +161,7 @@ input::placeholder{color:var(--text2)}
   <div class="match-header">
     <button class="back" onclick="goHome()">←</button>
     <h2 id="matchTitle">Partido</h2>
-    <button class="export-btn" onclick="exportJSON()">Exportar</button>
+    <button class="export-btn" onclick="openExportModal()">Exportar</button>
   </div>
   <div class="timer-section">
     <div class="timer-display" id="timerDisplay">00:00</div>
@@ -245,6 +245,17 @@ input::placeholder{color:var(--text2)}
         <button class="cancel" onclick="closeModal('confirmModal')">Cancelar</button>
         <button class="danger" id="confirmAction">Eliminar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportModal" onclick="closeModalOverlay(event,'exportModal')">
+  <div class="modal" style="text-align:center">
+    <h2>Exportar como...</h2>
+    <div style="display:flex;gap:12px;margin-top:20px">
+      <button onclick="doExport('json')" style="flex:1;padding:18px;background:var(--green);color:#000;border-radius:var(--radius);font-size:16px;font-weight:700">📋 JSON</button>
+      <button onclick="doExport('txt')" style="flex:1;padding:18px;background:var(--surface3);color:var(--text);border-radius:var(--radius);font-size:16px;font-weight:700">📝 TXT</button>
     </div>
   </div>
 </div>
@@ -664,10 +675,11 @@ function addPlayerToMatch() {
 $('addPlayerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayerToMatch(); });
 
 // Export
-function exportJSON() {
-  vibe();
+function openExportModal() { vibe(); openModal('exportModal'); }
+
+function getExportData() {
   const m = currentMatch();
-  const data = {
+  return {
     match: m.name,
     date: m.date,
     players: m.players.map(p => ({
@@ -679,14 +691,36 @@ function exportJSON() {
       }))
     }))
   };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+}
+
+function doExport(fmt) {
+  closeModal('exportModal');
+  const m = currentMatch();
+  const data = getExportData();
+  const fname = m.name.replace(/\s+/g, '_') + '_' + m.date;
+  let blob, ext;
+  if (fmt === 'json') {
+    blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    ext = 'json';
+  } else {
+    let txt = `${data.match} - ${data.date}\n${'='.repeat(40)}\n\n`;
+    data.players.forEach(p => {
+      txt += `▸ ${p.name} (${p.intervals.length} clips)\n`;
+      if (!p.intervals.length) { txt += '  (sin clips)\n'; }
+      p.intervals.forEach(iv => {
+        txt += `  ${iv.half}T  ${iv.start} → ${iv.end}\n`;
+      });
+      txt += '\n';
+    });
+    blob = new Blob([txt], { type: 'text/plain' });
+    ext = 'txt';
+  }
   const a = document.createElement('a');
-  a.href = url;
-  a.download = `${m.name.replace(/\s+/g, '_')}_${m.date}.json`;
+  a.href = URL.createObjectURL(blob);
+  a.download = `${fname}.${ext}`;
   a.click();
-  URL.revokeObjectURL(url);
-  toast('JSON exportado');
+  URL.revokeObjectURL(a.href);
+  toast(`${ext.toUpperCase()} exportado`);
 }
 
 // Utils
