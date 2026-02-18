@@ -139,6 +139,9 @@ input::placeholder{color:var(--text2)}
 /* Delete player */
 .player-delete-zone{padding:4px 16px 12px;display:flex;justify-content:flex-end}
 .player-delete-btn{font-size:12px;color:var(--text2);padding:4px 12px;border-radius:8px;background:var(--surface2)}
+.time-format-toggle{display:flex;justify-content:center;gap:4px;margin-bottom:12px}
+.time-format-toggle button{padding:6px 12px;font-size:11px;font-weight:600;border-radius:6px;background:var(--surface3);color:var(--text2);transition:all .2s}
+.time-format-toggle button.active{background:var(--green);color:#000}
 </style>
 </head>
 <body>
@@ -172,6 +175,10 @@ input::placeholder{color:var(--text2)}
       </div>
       <button class="btn-play" id="playBtn" onclick="toggleTimer()">▶</button>
       <button class="btn-sync" onclick="openSyncModal()">SYNC</button>
+    </div>
+    <div class="time-format-toggle">
+      <button id="fmtStd" class="active" onclick="setTimeFormat('standard')">Standard</button>
+      <button id="fmt90" onclick="setTimeFormat('90min')">90min</button>
     </div>
   </div>
   <div class="players-section">
@@ -368,7 +375,8 @@ function createMatch() {
     timer2T: 0,
     currentHalf: 1,
     running: false,
-    lastTick: null
+    lastTick: null,
+    timeFormat: 'standard'
   };
   matches.unshift(match);
   save();
@@ -409,6 +417,9 @@ function openMatch(id, skipVibe) {
     m.currentHalf = m.half || 1;
     delete m.half;
   }
+  if (m.timeFormat === undefined) {
+    m.timeFormat = 'standard';
+  }
   currentHalf = m.currentHalf || 1;
   timerRunning = false;
   // Restore running timer
@@ -422,6 +433,7 @@ function openMatch(id, skipVibe) {
   }
   $('matchTitle').textContent = m.name;
   updateHalfUI();
+  updateTimeFormatUI();
   updateTimerDisplay();
   updatePlayBtn();
   renderPlayers();
@@ -459,6 +471,36 @@ function doGoHome() {
 }
 
 // Timer
+function formatTimer(seconds, half, timeFormat) {
+  if (half === 2 && timeFormat === '90min') {
+    seconds += 2700; // 45 min = 2700 seconds
+  }
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function getTimeFormat() {
+  const m = currentMatch();
+  return m && m.timeFormat ? m.timeFormat : 'standard';
+}
+
+function setTimeFormat(fmt) {
+  vibe();
+  const m = currentMatch();
+  m.timeFormat = fmt;
+  save();
+  updateTimeFormatUI();
+  updateTimerDisplay();
+  renderPlayers();
+}
+
+function updateTimeFormatUI() {
+  const fmt = getTimeFormat();
+  $('fmtStd').classList.toggle('active', fmt === 'standard');
+  $('fmt90').classList.toggle('active', fmt === '90min');
+}
+
 function toggleTimer() {
   vibe(15);
   if (timerRunning) stopTimer(); else startTimer();
@@ -491,9 +533,8 @@ function stopTimer() {
 
 function updateTimerDisplay() {
   const secs = getTimerSeconds();
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  $('timerDisplay').textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  const fmt = getTimeFormat();
+  $('timerDisplay').textContent = formatTimer(secs, currentHalf, fmt);
 }
 
 function updatePlayBtn() {
@@ -553,11 +594,13 @@ $('syncInput').addEventListener('keydown', e => { if (e.key === 'Enter') applySy
 function renderPlayers() {
   const m = currentMatch();
   if (!m) return;
+  const fmt = getTimeFormat();
   $('playersList').innerHTML = m.players.map((p, i) => {
     const isRec = p.recording;
     const clipCount = p.intervals.length;
     const ts = getTimerSeconds();
-    const statusText = isRec ? `● GRABANDO ${formatSec(ts - p.startTime)}...` : (clipCount ? 'Esperando' : 'Sin clips');
+    const recDur = isRec ? formatTimer(ts - p.startTime, currentHalf, fmt) : '';
+    const statusText = isRec ? `● GRABANDO ${recDur}...` : (clipCount ? 'Esperando' : 'Sin clips');
     return `<div class="player-card ${isRec ? 'recording' : ''}" id="pc${i}">
       <div class="player-top">
         <div class="player-info">
@@ -573,7 +616,7 @@ function renderPlayers() {
         <span>Intervalos (${clipCount})</span><span id="arrow${i}">▼</span>
       </button>
       <div class="intervals-list" id="intervals${i}">
-        ${p.intervals.map((iv, j) => `<div class="interval"><span>${formatSec(iv.start)} → ${formatSec(iv.end)}</span><span>${iv.half || 1}T</span></div>`).join('')}
+        ${p.intervals.map((iv, j) => `<div class="interval"><span>${formatTimer(iv.start, iv.half || 1, fmt)} → ${formatTimer(iv.end, iv.half || 1, fmt)}</span><span>${iv.half || 1}T</span></div>`).join('')}
       </div>` : ''}
       <div class="player-delete-zone"><button class="player-delete-btn" onclick="deletePlayer(${i})">Eliminar jugador</button></div>
     </div>`;
