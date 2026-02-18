@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Fútbol Clipper</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0a0a0a;--surface:#151515;--surface2:#1e1e1e;--surface3:#282828;--text:#f0f0f0;--text2:#999;--green:#2ecc71;--green2:#27ae60;--red:#e74c3c;--red2:#c0392b;--radius:16px;--radius-sm:10px}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);position:relative}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;font-size:inherit}
+input{font-family:inherit;font-size:16px;background:var(--surface2);color:var(--text);border:2px solid var(--surface3);border-radius:var(--radius-sm);padding:14px 16px;width:100%;outline:none;transition:border-color .2s}
+input:focus{border-color:var(--green)}
+input::placeholder{color:var(--text2)}
+
+/* Screens */
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;will-change:transform,opacity;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.screen.hidden{pointer-events:none;opacity:0;transform:translateX(100%)}
+.screen.hidden-left{pointer-events:none;opacity:0;transform:translateX(-30%)}
+#home.hidden{transform:translateX(-30%)}
+#match.hidden{transform:translateX(100%)}
+
+/* Scrollbar */
+.screen::-webkit-scrollbar{width:0}
+
+/* Home */
+.home-header{padding:60px 24px 24px;text-align:center}
+.home-header h1{font-size:32px;font-weight:800;margin-bottom:4px}
+.home-header .emoji{font-size:48px;display:block;margin-bottom:12px}
+.home-header p{color:var(--text2);font-size:14px}
+.btn-new{display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 48px);margin:20px 24px;padding:18px;background:var(--green);color:#000;font-size:17px;font-weight:700;border-radius:var(--radius);transition:transform .1s,background .2s;position:relative;overflow:hidden}
+.btn-new:active{transform:scale(.97);background:var(--green2)}
+.match-list{padding:0 24px 120px;display:flex;flex-direction:column;gap:12px}
+.match-card{background:var(--surface);border-radius:var(--radius);padding:18px;display:flex;justify-content:space-between;align-items:center;transition:transform .1s;position:relative;overflow:hidden}
+.match-card:active{transform:scale(.98)}
+.match-card .info h3{font-size:17px;font-weight:600;margin-bottom:4px}
+.match-card .info .meta{font-size:13px;color:var(--text2);display:flex;gap:12px}
+.match-card .actions{display:flex;gap:8px;align-items:center}
+.match-card .go{width:40px;height:40px;border-radius:50%;background:var(--green);color:#000;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0}
+.match-card .del{width:36px;height:36px;border-radius:50%;background:var(--surface3);color:var(--red);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.empty-state{text-align:center;padding:60px 24px;color:var(--text2)}
+.empty-state .icon{font-size:64px;margin-bottom:16px;opacity:.5}
+.empty-state p{font-size:15px;line-height:1.5}
+
+/* Modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border-radius:24px 24px 0 0;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;padding:24px 24px 40px;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1)}
+.modal-overlay.show .modal{transform:translateY(0)}
+.modal h2{font-size:22px;font-weight:700;margin-bottom:20px;text-align:center}
+.modal .field{margin-bottom:16px}
+.modal .field label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.modal .player-input-row{display:flex;gap:8px}
+.modal .player-input-row input{flex:1}
+.modal .player-input-row button{width:48px;height:48px;background:var(--green);color:#000;border-radius:var(--radius-sm);font-size:24px;font-weight:700;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;min-height:20px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--surface3);padding:8px 12px;border-radius:20px;font-size:14px;font-weight:500;animation:chipIn .2s}
+.chip .x{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2);cursor:pointer}
+@keyframes chipIn{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+.btn-create{width:100%;padding:18px;background:var(--green);color:#000;font-size:17px;font-weight:700;border-radius:var(--radius);margin-top:24px;transition:transform .1s,opacity .2s}
+.btn-create:active{transform:scale(.97)}
+.btn-create:disabled{opacity:.4}
+
+/* Match screen */
+.match-header{display:flex;align-items:center;gap:12px;padding:16px 20px;background:var(--surface);position:sticky;top:0;z-index:10}
+.match-header .back{width:36px;height:36px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.match-header h2{font-size:18px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match-header .export-btn{padding:8px 14px;background:var(--green);color:#000;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap}
+
+/* Timer section */
+.timer-section{text-align:center;padding:20px 24px 16px;background:var(--surface);margin:0 0 2px}
+.timer-display{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;font-size:64px;font-weight:700;letter-spacing:2px;line-height:1;margin-bottom:16px;color:var(--text)}
+.timer-controls{display:flex;justify-content:center;gap:10px;align-items:center;flex-wrap:wrap}
+.half-toggle{display:flex;background:var(--surface3);border-radius:10px;overflow:hidden}
+.half-toggle button{padding:10px 20px;font-size:14px;font-weight:600;transition:background .2s,color .2s}
+.half-toggle button.active{background:var(--green);color:#000}
+.btn-play{width:52px;height:52px;border-radius:50%;background:var(--green);color:#000;font-size:22px;display:flex;align-items:center;justify-content:center;transition:transform .1s}
+.btn-play:active{transform:scale(.9)}
+.btn-play.running{background:var(--surface3);color:var(--text)}
+.btn-sync{padding:8px 16px;background:var(--surface3);border-radius:20px;font-size:13px;color:var(--text2);font-weight:600}
+
+/* Players section */
+.players-section{padding:12px 16px 140px}
+.players-section .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.players-section .section-header h3{font-size:15px;color:var(--text2);font-weight:600}
+.btn-add-player{padding:8px 16px;background:var(--surface2);border-radius:20px;font-size:13px;font-weight:600;color:var(--green)}
+
+/* Player card */
+.player-card{background:var(--surface);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;transition:box-shadow .3s,border .3s;border:2px solid transparent}
+.player-card.recording{border-color:var(--red);box-shadow:0 0 20px rgba(231,76,60,.2)}
+.player-top{padding:16px}
+.player-info{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.player-name{font-size:18px;font-weight:700}
+.player-clips{font-size:12px;color:var(--text2);background:var(--surface3);padding:4px 10px;border-radius:12px}
+.player-toggle{width:100%;padding:16px;border-radius:var(--radius-sm);font-size:16px;font-weight:700;transition:all .15s;position:relative;overflow:hidden;text-transform:uppercase;letter-spacing:1px}
+.player-toggle.idle{background:var(--surface3);color:var(--text2)}
+.player-toggle.active{background:var(--red);color:#fff;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,.4)}50%{box-shadow:0 0 0 8px rgba(231,76,60,0)}}
+.player-toggle:active{transform:scale(.98)}
+.player-status{font-size:12px;color:var(--text2);margin-top:8px;text-align:center;height:16px}
+.player-status.rec{color:var(--red);font-weight:600}
+.player-intervals-toggle{width:100%;padding:10px 16px;background:var(--surface2);font-size:13px;color:var(--text2);text-align:left;display:flex;justify-content:space-between;align-items:center}
+.intervals-list{background:var(--surface2);padding:0 16px;max-height:0;overflow:hidden;transition:max-height .3s}
+.intervals-list.open{max-height:500px}
+.intervals-list .interval{padding:8px 0;border-bottom:1px solid var(--surface3);font-size:13px;display:flex;justify-content:space-between;font-family:'SF Mono',monospace}
+.intervals-list .interval:last-child{border-bottom:none}
+
+/* Sync modal */
+.sync-modal-content{text-align:center;padding:10px 0}
+.sync-modal-content p{color:var(--text2);font-size:14px;margin-bottom:20px;line-height:1.5}
+.sync-modal-content input{text-align:center;font-size:24px;font-family:'SF Mono',monospace;font-weight:700;letter-spacing:2px}
+.sync-buttons{display:flex;gap:10px;margin-top:20px}
+.sync-buttons button{flex:1;padding:14px;border-radius:var(--radius-sm);font-weight:700;font-size:15px}
+.sync-buttons .cancel{background:var(--surface3);color:var(--text2)}
+.sync-buttons .confirm{background:var(--green);color:#000}
+
+/* Add player inline modal */
+.add-player-modal .modal{padding:20px 24px 32px}
+
+/* Confirm modal */
+.confirm-modal-content{text-align:center}
+.confirm-modal-content p{color:var(--text2);font-size:15px;margin-bottom:24px;line-height:1.5}
+.confirm-buttons{display:flex;gap:10px}
+.confirm-buttons button{flex:1;padding:14px;border-radius:var(--radius-sm);font-weight:700;font-size:15px}
+.confirm-buttons .cancel{background:var(--surface3);color:var(--text2)}
+.confirm-buttons .danger{background:var(--red);color:#fff}
+
+/* Ripple */
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.2);transform:scale(0);animation:rippleAnim .5s ease-out;pointer-events:none}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
+
+/* Toast */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);color:var(--text);padding:12px 24px;border-radius:20px;font-size:14px;font-weight:500;z-index:200;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Delete player */
+.player-delete-zone{padding:4px 16px 12px;display:flex;justify-content:flex-end}
+.player-delete-btn{font-size:12px;color:var(--text2);padding:4px 12px;border-radius:8px;background:var(--surface2)}
+</style>
+</head>
+<body>
+
+<!-- HOME SCREEN -->
+<div class="screen" id="home">
+  <div class="home-header">
+    <span class="emoji">⚽</span>
+    <h1>Fútbol Clipper</h1>
+    <p>Marcá timestamps para compilados</p>
+  </div>
+  <button class="btn-new" onclick="openNewMatchModal()">
+    <span style="font-size:22px">+</span> Nuevo Partido
+  </button>
+  <div class="match-list" id="matchList"></div>
+</div>
+
+<!-- MATCH SCREEN -->
+<div class="screen hidden" id="match">
+  <div class="match-header">
+    <button class="back" onclick="goHome()">←</button>
+    <h2 id="matchTitle">Partido</h2>
+    <button class="export-btn" onclick="exportJSON()">Exportar</button>
+  </div>
+  <div class="timer-section">
+    <div class="timer-display" id="timerDisplay">00:00</div>
+    <div class="timer-controls">
+      <div class="half-toggle">
+        <button id="h1btn" class="active" onclick="setHalf(1)">1T</button>
+        <button id="h2btn" onclick="setHalf(2)">2T</button>
+      </div>
+      <button class="btn-play" id="playBtn" onclick="toggleTimer()">▶</button>
+      <button class="btn-sync" onclick="openSyncModal()">SYNC</button>
+    </div>
+  </div>
+  <div class="players-section">
+    <div class="section-header">
+      <h3>Jugadores</h3>
+      <button class="btn-add-player" onclick="openAddPlayerModal()">+ Agregar</button>
+    </div>
+    <div id="playersList"></div>
+  </div>
+</div>
+
+<!-- NEW MATCH MODAL -->
+<div class="modal-overlay" id="newMatchModal" onclick="closeModalOverlay(event,'newMatchModal')">
+  <div class="modal">
+    <h2>Nuevo Partido</h2>
+    <div class="field">
+      <label>Nombre del partido</label>
+      <input id="newMatchName" placeholder="Ej: River vs Boca" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Fecha</label>
+      <input id="newMatchDate" type="date">
+    </div>
+    <div class="field">
+      <label>Jugadores</label>
+      <div class="player-input-row">
+        <input id="newPlayerInput" placeholder="Nombre del jugador" autocomplete="off">
+        <button onclick="addChipPlayer()">+</button>
+      </div>
+      <div class="chips" id="chipContainer"></div>
+    </div>
+    <button class="btn-create" id="btnCreate" onclick="createMatch()">Crear Partido</button>
+  </div>
+</div>
+
+<!-- ADD PLAYER MODAL -->
+<div class="modal-overlay add-player-modal" id="addPlayerModal" onclick="closeModalOverlay(event,'addPlayerModal')">
+  <div class="modal">
+    <h2>Agregar Jugador</h2>
+    <div class="field">
+      <div class="player-input-row">
+        <input id="addPlayerInput" placeholder="Nombre del jugador" autocomplete="off">
+        <button onclick="addPlayerToMatch()">+</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SYNC MODAL -->
+<div class="modal-overlay" id="syncModal" onclick="closeModalOverlay(event,'syncModal')">
+  <div class="modal">
+    <h2>Sincronizar Reloj</h2>
+    <div class="sync-modal-content">
+      <p>Ingresá el tiempo actual del partido para sincronizar el reloj</p>
+      <input id="syncInput" type="text" placeholder="MM:SS" maxlength="5" autocomplete="off">
+      <div class="sync-buttons">
+        <button class="cancel" onclick="closeModal('syncModal')">Cancelar</button>
+        <button class="confirm" onclick="applySync()">Sincronizar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <h2 id="confirmTitle">¿Estás seguro?</h2>
+    <div class="confirm-modal-content">
+      <p id="confirmMsg"></p>
+      <div class="confirm-buttons">
+        <button class="cancel" onclick="closeModal('confirmModal')">Cancelar</button>
+        <button class="danger" id="confirmAction">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// State
+let matches = JSON.parse(localStorage.getItem('fc_matches') || '[]');
+let currentMatchId = null;
+let timerInterval = null;
+let timerRunning = false;
+let currentHalf = 1;
+let chipPlayers = [];
+
+const $ = id => document.getElementById(id);
+const vibe = (ms=10) => { try { navigator.vibrate(ms) } catch(e){} };
+const save = () => {
+  localStorage.setItem('fc_matches', JSON.stringify(matches));
+  if (currentMatchId) localStorage.setItem('fc_currentMatch', currentMatchId);
+};
+function getTimerSeconds() {
+  const m = currentMatch();
+  if (!m) return 0;
+  return currentHalf === 1 ? (m.timer1T || 0) : (m.timer2T || 0);
+}
+function setTimerSeconds(val) {
+  const m = currentMatch();
+  if (!m) return;
+  if (currentHalf === 1) m.timer1T = val; else m.timer2T = val;
+}
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function getMatch(id) { return matches.find(m => m.id === id); }
+function currentMatch() { return getMatch(currentMatchId); }
+
+// Render home
+function renderHome() {
+  const list = $('matchList');
+  if (!matches.length) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">🏟️</div><p>No hay partidos todavía.<br>¡Creá uno para empezar!</p></div>';
+    return;
+  }
+  list.innerHTML = matches.map(m => {
+    const clips = m.players.reduce((a, p) => a + p.intervals.length, 0);
+    return `<div class="match-card" onclick="openMatch('${m.id}')">
+      <div class="info">
+        <h3>${esc(m.name)}</h3>
+        <div class="meta"><span>📅 ${m.date}</span><span>👥 ${m.players.length}</span><span>🎬 ${clips}</span></div>
+      </div>
+      <div class="actions">
+        <button class="del" onclick="event.stopPropagation();confirmDelete('${m.id}')">✕</button>
+        <div class="go">→</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// New match modal
+function openNewMatchModal() {
+  vibe();
+  chipPlayers = [];
+  $('newMatchName').value = '';
+  $('newMatchDate').value = new Date().toISOString().split('T')[0];
+  $('newPlayerInput').value = '';
+  renderChips();
+  openModal('newMatchModal');
+  setTimeout(() => $('newMatchName').focus(), 400);
+}
+
+function renderChips() {
+  $('chipContainer').innerHTML = chipPlayers.map((p, i) =>
+    `<div class="chip">${esc(p)}<span class="x" onclick="removeChip(${i})">✕</span></div>`
+  ).join('');
+}
+
+function addChipPlayer() {
+  const input = $('newPlayerInput');
+  const name = input.value.trim();
+  if (!name) return;
+  chipPlayers.push(name);
+  input.value = '';
+  renderChips();
+  vibe();
+  input.focus();
+}
+
+function removeChip(i) { chipPlayers.splice(i, 1); renderChips(); vibe(); }
+
+$('newPlayerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addChipPlayer(); });
+
+function createMatch() {
+  const name = $('newMatchName').value.trim();
+  const date = $('newMatchDate').value;
+  if (!name) { toast('Ingresá un nombre'); return; }
+  const match = {
+    id: Date.now().toString(36),
+    name, date,
+    players: chipPlayers.map(p => ({ name: p, intervals: [], recording: false, startTime: null })),
+    timer1T: 0,
+    timer2T: 0,
+    currentHalf: 1,
+    running: false,
+    lastTick: null
+  };
+  matches.unshift(match);
+  save();
+  closeModal('newMatchModal');
+  renderHome();
+  toast('Partido creado');
+  vibe(20);
+  setTimeout(() => openMatch(match.id), 350);
+}
+
+// Delete match
+function confirmDelete(id) {
+  vibe();
+  const m = getMatch(id);
+  $('confirmTitle').textContent = '¿Eliminar partido?';
+  $('confirmMsg').textContent = `Se eliminará "${m.name}" y todos sus datos.`;
+  $('confirmAction').textContent = 'Eliminar';
+  $('confirmAction').onclick = () => {
+    matches = matches.filter(x => x.id !== id);
+    save(); closeModal('confirmModal'); renderHome(); toast('Partido eliminado'); vibe(20);
+  };
+  openModal('confirmModal');
+}
+
+// Open match
+function openMatch(id, skipVibe) {
+  if (!skipVibe) vibe();
+  currentMatchId = id;
+  localStorage.setItem('fc_currentMatch', id);
+  const m = currentMatch();
+  // Migrate old format
+  if (m.timerSeconds !== undefined) {
+    m.timer1T = m.timerSeconds || 0;
+    m.timer2T = 0;
+    delete m.timerSeconds;
+  }
+  if (m.half !== undefined) {
+    m.currentHalf = m.half || 1;
+    delete m.half;
+  }
+  currentHalf = m.currentHalf || 1;
+  timerRunning = false;
+  // Restore running timer
+  if (m.running && m.lastTick) {
+    const elapsed = Math.floor((Date.now() - m.lastTick) / 1000);
+    if (currentHalf === 1) m.timer1T = (m.timer1T || 0) + elapsed;
+    else m.timer2T = (m.timer2T || 0) + elapsed;
+    m.lastTick = Date.now();
+    save();
+    startTimer();
+  }
+  $('matchTitle').textContent = m.name;
+  updateHalfUI();
+  updateTimerDisplay();
+  updatePlayBtn();
+  renderPlayers();
+  $('home').classList.add('hidden-left');
+  $('match').classList.remove('hidden');
+}
+
+function goHome() {
+  const m = currentMatch();
+  const anyRec = m && m.players.some(p => p.recording);
+  if (anyRec) {
+    $('confirmTitle').textContent = '¿Salir del partido?';
+    $('confirmMsg').textContent = 'Hay jugadores grabando. Se detendrán las grabaciones activas.';
+    $('confirmAction').textContent = 'Salir';
+    $('confirmAction').onclick = () => {
+      stopAllRecordings();
+      doGoHome();
+      closeModal('confirmModal');
+    };
+    openModal('confirmModal');
+    return;
+  }
+  doGoHome();
+}
+
+function doGoHome() {
+  stopTimer();
+  const m = currentMatch();
+  if (m) { m.currentHalf = currentHalf; save(); }
+  currentMatchId = null;
+  localStorage.removeItem('fc_currentMatch');
+  $('match').classList.add('hidden');
+  $('home').classList.remove('hidden-left');
+  renderHome();
+}
+
+// Timer
+function toggleTimer() {
+  vibe(15);
+  if (timerRunning) stopTimer(); else startTimer();
+}
+
+function startTimer() {
+  timerRunning = true;
+  const m = currentMatch();
+  m.running = true;
+  m.lastTick = Date.now();
+  save();
+  updatePlayBtn();
+  timerInterval = setInterval(() => {
+    const sec = getTimerSeconds() + 1;
+    setTimerSeconds(sec);
+    updateTimerDisplay();
+    updateRecordingStatuses();
+    if (sec % 5 === 0) autoSave();
+  }, 1000);
+}
+
+function stopTimer() {
+  timerRunning = false;
+  clearInterval(timerInterval);
+  const m = currentMatch();
+  if (m) { m.running = false; m.lastTick = null; }
+  updatePlayBtn();
+  autoSave();
+}
+
+function updateTimerDisplay() {
+  const secs = getTimerSeconds();
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  $('timerDisplay').textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
+function updatePlayBtn() {
+  const btn = $('playBtn');
+  btn.textContent = timerRunning ? '⏸' : '▶';
+  btn.classList.toggle('running', timerRunning);
+}
+
+function setHalf(h) {
+  vibe();
+  if (h === currentHalf) return;
+  // Pause timer when switching halves
+  const wasRunning = timerRunning;
+  if (wasRunning) {
+    clearInterval(timerInterval);
+    timerRunning = false;
+    const m = currentMatch();
+    m.running = false;
+    m.lastTick = null;
+  }
+  currentHalf = h;
+  const m = currentMatch();
+  m.currentHalf = h;
+  updateHalfUI();
+  updateTimerDisplay();
+  updatePlayBtn();
+  autoSave();
+}
+
+function updateHalfUI() {
+  $('h1btn').classList.toggle('active', currentHalf === 1);
+  $('h2btn').classList.toggle('active', currentHalf === 2);
+}
+
+// Sync
+function openSyncModal() {
+  vibe();
+  $('syncInput').value = '';
+  openModal('syncModal');
+  setTimeout(() => $('syncInput').focus(), 400);
+}
+
+function applySync() {
+  const val = $('syncInput').value.trim();
+  const parts = val.split(':');
+  if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) { toast('Formato: MM:SS'); return; }
+  setTimerSeconds(parseInt(parts[0]) * 60 + parseInt(parts[1]));
+  updateTimerDisplay();
+  closeModal('syncModal');
+  toast('Reloj sincronizado');
+  autoSave();
+}
+
+$('syncInput').addEventListener('keydown', e => { if (e.key === 'Enter') applySync(); });
+
+// Players
+function renderPlayers() {
+  const m = currentMatch();
+  if (!m) return;
+  $('playersList').innerHTML = m.players.map((p, i) => {
+    const isRec = p.recording;
+    const clipCount = p.intervals.length;
+    const ts = getTimerSeconds();
+    const statusText = isRec ? `● GRABANDO ${formatSec(ts - p.startTime)}...` : (clipCount ? 'Esperando' : 'Sin clips');
+    return `<div class="player-card ${isRec ? 'recording' : ''}" id="pc${i}">
+      <div class="player-top">
+        <div class="player-info">
+          <span class="player-name">${esc(p.name)}</span>
+          <span class="player-clips">${clipCount} clip${clipCount !== 1 ? 's' : ''}</span>
+        </div>
+        <button class="player-toggle ${isRec ? 'active' : 'idle'}" onclick="togglePlayer(${i})">
+          ${isRec ? '⏹ DETENER' : '⏺ MARCAR'}
+        </button>
+        <div class="player-status ${isRec ? 'rec' : ''}">${statusText}</div>
+      </div>
+      ${clipCount ? `<button class="player-intervals-toggle" onclick="toggleIntervals(${i})">
+        <span>Intervalos (${clipCount})</span><span id="arrow${i}">▼</span>
+      </button>
+      <div class="intervals-list" id="intervals${i}">
+        ${p.intervals.map((iv, j) => `<div class="interval"><span>${formatSec(iv.start)} → ${formatSec(iv.end)}</span><span>${iv.half || 1}T</span></div>`).join('')}
+      </div>` : ''}
+      <div class="player-delete-zone"><button class="player-delete-btn" onclick="deletePlayer(${i})">Eliminar jugador</button></div>
+    </div>`;
+  }).join('');
+}
+
+function togglePlayer(i) {
+  vibe(25);
+  const m = currentMatch();
+  const p = m.players[i];
+  const ts = getTimerSeconds();
+  if (p.recording) {
+    p.intervals.push({ start: p.startTime, end: ts, half: p.startHalf || currentHalf });
+    p.recording = false;
+    p.startTime = null;
+    p.startHalf = null;
+    toast(`Clip guardado para ${p.name}`);
+  } else {
+    p.recording = true;
+    p.startTime = ts;
+    p.startHalf = currentHalf;
+    if (!timerRunning) startTimer();
+  }
+  save();
+  renderPlayers();
+}
+
+function toggleIntervals(i) {
+  const el = $('intervals' + i);
+  const arrow = $('arrow' + i);
+  el.classList.toggle('open');
+  arrow.textContent = el.classList.contains('open') ? '▲' : '▼';
+}
+
+function deletePlayer(i) {
+  vibe();
+  const m = currentMatch();
+  const p = m.players[i];
+  $('confirmTitle').textContent = '¿Eliminar jugador?';
+  $('confirmMsg').textContent = `Se eliminará "${p.name}" y todos sus clips.`;
+  $('confirmAction').textContent = 'Eliminar';
+  $('confirmAction').onclick = () => {
+    m.players.splice(i, 1);
+    save(); closeModal('confirmModal'); renderPlayers(); toast('Jugador eliminado');
+  };
+  openModal('confirmModal');
+}
+
+function updateRecordingStatuses() {
+  const m = currentMatch();
+  if (!m) return;
+  const ts = getTimerSeconds();
+  m.players.forEach((p, i) => {
+    if (p.recording) {
+      const card = $('pc' + i);
+      if (!card) return;
+      const status = card.querySelector('.player-status');
+      if (status) status.textContent = `● GRABANDO ${formatSec(ts - p.startTime)}...`;
+    }
+  });
+}
+
+function stopAllRecordings() {
+  const m = currentMatch();
+  const ts = getTimerSeconds();
+  m.players.forEach(p => {
+    if (p.recording) {
+      p.intervals.push({ start: p.startTime, end: ts, half: p.startHalf || currentHalf });
+      p.recording = false;
+      p.startTime = null;
+      p.startHalf = null;
+    }
+  });
+  save();
+}
+
+// Add player to active match
+function openAddPlayerModal() {
+  vibe();
+  $('addPlayerInput').value = '';
+  openModal('addPlayerModal');
+  setTimeout(() => $('addPlayerInput').focus(), 400);
+}
+
+function addPlayerToMatch() {
+  const input = $('addPlayerInput');
+  const name = input.value.trim();
+  if (!name) return;
+  const m = currentMatch();
+  m.players.push({ name, intervals: [], recording: false, startTime: null });
+  save();
+  input.value = '';
+  renderPlayers();
+  toast(`${name} agregado`);
+  vibe();
+  input.focus();
+}
+
+$('addPlayerInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPlayerToMatch(); });
+
+// Export
+function exportJSON() {
+  vibe();
+  const m = currentMatch();
+  const data = {
+    match: m.name,
+    date: m.date,
+    players: m.players.map(p => ({
+      name: p.name,
+      intervals: p.intervals.map(iv => ({
+        start: formatSec(iv.start),
+        end: formatSec(iv.end),
+        half: iv.half || 1
+      }))
+    }))
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${m.name.replace(/\s+/g, '_')}_${m.date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('JSON exportado');
+}
+
+// Utils
+function formatSec(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0');
+}
+
+function autoSave() {
+  const m = currentMatch();
+  if (m) {
+    m.currentHalf = currentHalf;
+    if (timerRunning) m.lastTick = Date.now();
+  }
+  save();
+}
+
+// Modal helpers
+function openModal(id) { $(id).classList.add('show'); }
+function closeModal(id) { $(id).classList.remove('show'); }
+function closeModalOverlay(e, id) { if (e.target === $(id)) closeModal(id); }
+
+// Init
+renderHome();
+// Restore current match on reload
+const savedMatchId = localStorage.getItem('fc_currentMatch');
+if (savedMatchId && matches.find(m => m.id === savedMatchId)) {
+  openMatch(savedMatchId, true);
+}
+</script>
+</body>
+</html>
