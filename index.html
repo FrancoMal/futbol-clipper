@@ -15,6 +15,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 input{font-family:inherit;font-size:16px;background:var(--surface2);color:var(--text);border:2px solid var(--surface3);border-radius:var(--radius-sm);padding:14px 16px;width:100%;outline:none;transition:border-color .2s}
 input:focus{border-color:var(--green)}
 input::placeholder{color:var(--text2)}
+.footer{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(to top,var(--bg),transparent);padding:20px;text-align:center;pointer-events:none}
+.footer a{color:var(--text2);text-decoration:none;font-size:12px;pointer-events:auto;transition:color .2s}
+.footer a:hover{color:var(--green)}
 
 /* Screens */
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s;will-change:transform,opacity;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
@@ -1094,5 +1097,8 @@ if (savedMatchId && matches.find(m => m.id === savedMatchId)) {
   openMatch(savedMatchId, true);
 }
 </script>
+<div class="footer">
+  <a href="https://github.com/FrancoMal/futbol-clipper" target="_blank">⚽ Fútbol Clipper</a>
+</div>
 </body>
 </html>
