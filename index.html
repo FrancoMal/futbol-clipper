@@ -203,6 +203,12 @@ input::placeholder{color:var(--text2)}
 
 /* Version badge */
 .version-badge{position:fixed;bottom:8px;right:12px;font-size:11px;color:var(--text2);background:var(--surface2);padding:4px 10px;border-radius:10px;z-index:50}
+
+/* Undo/Redo buttons */
+.undo-redo{display:flex;gap:4px}
+.undo-redo button{width:36px;height:36px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:16px;transition:opacity .2s,transform .1s}
+.undo-redo button:active{transform:scale(.9)}
+.undo-redo button:disabled{opacity:.25;pointer-events:none}
 </style>
 </head>
 <body>
@@ -232,6 +238,10 @@ input::placeholder{color:var(--text2)}
   <div class="match-header">
     <button class="back" onclick="goHome()">←</button>
     <h2 id="matchTitle">Partido</h2>
+    <div class="undo-redo">
+      <button id="undoBtn" onclick="undo()" disabled title="Deshacer (Ctrl+Z)">↩</button>
+      <button id="redoBtn" onclick="redo()" disabled title="Rehacer (Ctrl+Y)">↪</button>
+    </div>
     <button class="import-btn" onclick="triggerImport()">Importar</button>
     <button class="export-btn" onclick="openExportModal()">Exportar</button>
   </div>
@@ -396,6 +406,78 @@ let timerInterval = null;
 let timerRunning = false;
 let currentHalf = 1;
 let chipPlayers = [];
+
+// Undo/Redo state
+let actionHistory = [];
+let redoStack = [];
+const MAX_HISTORY = 50;
+
+function snapshotMatch() {
+  const m = currentMatch();
+  if (!m) return null;
+  return {
+    players: JSON.parse(JSON.stringify(m.players)),
+    penalties: JSON.parse(JSON.stringify(m.penalties || []))
+  };
+}
+
+function pushUndo(label, snapshot) {
+  if (!snapshot) return;
+  actionHistory.push({ label, snapshot });
+  if (actionHistory.length > MAX_HISTORY) actionHistory.shift();
+  redoStack = [];
+  updateUndoRedoUI();
+}
+
+function undo() {
+  if (!actionHistory.length) return;
+  const m = currentMatch();
+  if (!m) return;
+  const action = actionHistory.pop();
+  // Save current state for redo
+  redoStack.push({ label: action.label, snapshot: snapshotMatch() });
+  // Restore previous state
+  m.players = action.snapshot.players;
+  m.penalties = action.snapshot.penalties;
+  save();
+  renderPlayers();
+  updatePenaltyUI();
+  updateUndoRedoUI();
+  toast('Deshecho: ' + action.label);
+  vibe();
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  const m = currentMatch();
+  if (!m) return;
+  const action = redoStack.pop();
+  // Save current state for undo
+  actionHistory.push({ label: action.label, snapshot: snapshotMatch() });
+  if (actionHistory.length > MAX_HISTORY) actionHistory.shift();
+  // Apply redo state
+  m.players = action.snapshot.players;
+  m.penalties = action.snapshot.penalties;
+  save();
+  renderPlayers();
+  updatePenaltyUI();
+  updateUndoRedoUI();
+  toast('Rehecho: ' + action.label);
+  vibe();
+}
+
+function updateUndoRedoUI() {
+  const undoBtn = $('undoBtn');
+  const redoBtn = $('redoBtn');
+  if (undoBtn) undoBtn.disabled = !actionHistory.length;
+  if (redoBtn) redoBtn.disabled = !redoStack.length;
+}
+
+function clearUndoHistory() {
+  actionHistory = [];
+  redoStack = [];
+  updateUndoRedoUI();
+}
 
 // Edit intervals state
 let editingPlayerIndex = null;
@@ -577,6 +659,7 @@ function confirmDelete(id) {
 // Open match
 function openMatch(id, skipVibe) {
   if (!skipVibe) vibe();
+  clearUndoHistory();
   currentMatchId = id;
   localStorage.setItem('fc_currentMatch', id);
   const m = currentMatch();
@@ -862,6 +945,7 @@ function togglePlayer(i) {
   const p = m.players[i];
   const ts = getTimerSeconds();
   if (p.recording) {
+    const snap = snapshotMatch();
     const tags = [];
     if ((p.startHalf || currentHalf) === 'PEN') {
       tags.push({ text: 'Penal', color: '#e74c3c' });
@@ -870,6 +954,7 @@ function togglePlayer(i) {
     p.recording = false;
     p.startTime = null;
     p.startHalf = null;
+    pushUndo('Clip ' + p.name, snap);
     toast('Clip guardado para ' + p.name);
   } else {
     p.recording = true;
@@ -896,7 +981,9 @@ function deletePlayer(i) {
   $('confirmMsg').textContent = `Se eliminará "${p.name}" y todos sus clips.`;
   $('confirmAction').textContent = 'Eliminar';
   $('confirmAction').onclick = () => {
+    const snap = snapshotMatch();
     m.players.splice(i, 1);
+    pushUndo('Eliminar ' + p.name, snap);
     save(); closeModal('confirmModal'); renderPlayers(); toast('Jugador eliminado');
   };
   openModal('confirmModal');
@@ -945,7 +1032,9 @@ function addPlayerToMatch() {
   const name = input.value.trim();
   if (!name) return;
   const m = currentMatch();
+  const snap = snapshotMatch();
   m.players.push({ name, intervals: [], recording: false, startTime: null });
+  pushUndo('Agregar ' + name, snap);
   save();
   input.value = '';
   renderPlayers();
@@ -1023,7 +1112,9 @@ function openTagsModalFromEdit(intervalIdx) {
 
 function saveEditedIntervals() {
   const m = currentMatch();
+  const snap = snapshotMatch();
   m.players[editingPlayerIndex].intervals = editedIntervals;
+  pushUndo('Editar intervalos', snap);
   save();
   closeModal('editIntervalsModal');
   renderPlayers();
@@ -1069,11 +1160,13 @@ function selectColor(color) {
 }
 
 function addPresetTag(text, color) {
+  const snap = snapshotMatch();
   const m = currentMatch();
   const player = m.players[currentTagPlayerIdx];
   const interval = player.intervals[currentTagIntervalIdx];
   if (!interval.tags) interval.tags = [];
   interval.tags.push({ text, color });
+  pushUndo('Tag ' + text, snap);
   renderCurrentTags(interval);
   toast(`"${text}" agregado`);
 }
@@ -1081,11 +1174,13 @@ function addPresetTag(text, color) {
 function addCustomTag() {
   const text = $('customTagInput').value.trim();
   if (!text) return;
+  const snap = snapshotMatch();
   const m = currentMatch();
   const player = m.players[currentTagPlayerIdx];
   const interval = player.intervals[currentTagIntervalIdx];
   if (!interval.tags) interval.tags = [];
   interval.tags.push({ text, color: currentTagColor });
+  pushUndo('Tag ' + text, snap);
   $('customTagInput').value = '';
   renderCurrentTags(interval);
   toast(`"${text}" agregado`);
@@ -1098,10 +1193,12 @@ function renderCurrentTags(interval) {
 }
 
 function removeTag(idx) {
+  const snap = snapshotMatch();
   const m = currentMatch();
   const player = m.players[currentTagPlayerIdx];
   const interval = player.intervals[currentTagIntervalIdx];
   interval.tags.splice(idx, 1);
+  pushUndo('Quitar etiqueta', snap);
   renderCurrentTags(interval);
 }
 
@@ -1179,10 +1276,12 @@ function doExport(fmt) {
 // Penalties
 function registerPenalty(result) {
   vibe(25);
+  const snap = snapshotMatch();
   const m = currentMatch();
   if (!m.penalties) m.penalties = [];
   const num = m.penalties.length + 1;
   m.penalties.push({ num, result, timestamp: Date.now() });
+  pushUndo('Penal #' + num, snap);
   save();
   renderPenaltyLog();
   const emoji = result === 'Gol' ? '⚽' : result === 'Atajado' ? '🧤' : '❌';
@@ -1376,6 +1475,18 @@ function createMatchFromImport(data, isCopy) {
 function openModal(id) { $(id).classList.add('show'); }
 function closeModal(id) { $(id).classList.remove('show'); }
 function closeModalOverlay(e, id) { if (e.target === $(id)) closeModal(id); }
+
+// Undo/Redo keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    undo();
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault();
+    redo();
+  }
+});
 
 // Init
 renderHome();
