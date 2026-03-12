@@ -72,6 +72,7 @@ input::placeholder{color:var(--text2)}
 .match-header .back{width:36px;height:36px;border-radius:50%;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .match-header h2{font-size:18px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .match-header .export-btn{padding:8px 14px;background:var(--green);color:#000;border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap}
+.match-header .import-btn{padding:8px 14px;background:var(--surface3);color:var(--text);border-radius:20px;font-size:13px;font-weight:700;white-space:nowrap}
 
 /* Timer section */
 .timer-section{text-align:center;padding:20px 24px 16px;background:var(--surface);margin:0 0 2px}
@@ -213,9 +214,15 @@ input::placeholder{color:var(--text2)}
     <h1>Fútbol Clipper</h1>
     <p>Marcá timestamps para compilados</p>
   </div>
-  <button class="btn-new" onclick="openNewMatchModal()">
-    <span style="font-size:22px">+</span> Nuevo Partido
-  </button>
+  <div style="display:flex;gap:10px;padding:0 24px;margin:20px 0 0">
+    <button class="btn-new" style="margin:0;width:auto;flex:1" onclick="openNewMatchModal()">
+      <span style="font-size:22px">+</span> Nuevo Partido
+    </button>
+    <button class="btn-new" style="margin:0;width:auto;flex:none;padding:18px 20px;background:var(--surface3);color:var(--text)" onclick="triggerImportHome()">
+      📥 Importar
+    </button>
+  </div>
+  <input type="file" id="importFileInputHome" accept=".json" style="display:none" onchange="handleImportFile(event)">
   <div class="match-list" id="matchList"></div>
   <div class="version-badge" id="versionBadge">v1.2</div>
 </div>
@@ -225,8 +232,10 @@ input::placeholder{color:var(--text2)}
   <div class="match-header">
     <button class="back" onclick="goHome()">←</button>
     <h2 id="matchTitle">Partido</h2>
+    <button class="import-btn" onclick="triggerImport()">Importar</button>
     <button class="export-btn" onclick="openExportModal()">Exportar</button>
   </div>
+  <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="handleImportFile(event)">
   <div class="timer-section">
     <div class="timer-display" id="timerDisplay">00:00</div>
     <div class="timer-controls">
@@ -1225,6 +1234,142 @@ function autoSave() {
     if (timerRunning) m.lastTick = Date.now();
   }
   save();
+}
+
+// Import
+function triggerImport() { vibe(); $('importFileInput').click(); }
+function triggerImportHome() { vibe(); $('importFileInputHome').click(); }
+
+function handleImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      importMatch(e.target.result);
+    } catch (err) {
+      toast('Error: archivo inválido');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function importMatch(jsonString) {
+  let data;
+  try {
+    data = JSON.parse(jsonString);
+  } catch (e) {
+    toast('Error: JSON inválido');
+    return;
+  }
+  // Validate structure
+  if (!data.match || !Array.isArray(data.players)) {
+    toast('Error: estructura inválida');
+    return;
+  }
+  for (const p of data.players) {
+    if (!p.name || !Array.isArray(p.intervals)) {
+      toast('Error: jugador sin nombre o intervalos');
+      return;
+    }
+  }
+  // Check for duplicate (same name and date)
+  const existing = matches.find(m => m.name === data.match && m.date === (data.date || ''));
+  if (existing) {
+    $('confirmTitle').textContent = 'Partido existente';
+    $('confirmMsg').textContent = `Ya existe "${data.match}" (${data.date || 'sin fecha'}). ¿Sobreescribir o crear copia?`;
+    $('confirmAction').textContent = 'Sobreescribir';
+    $('confirmAction').onclick = () => {
+      applyImportToMatch(existing, data);
+      closeModal('confirmModal');
+      toast('Partido sobreescrito');
+      renderHome();
+      if (currentMatchId === existing.id) openMatch(existing.id, true);
+    };
+    // Add copy button
+    const cancelBtn = document.querySelector('#confirmModal .cancel');
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = 'Crear copia';
+    copyBtn.className = 'cancel';
+    copyBtn.style.cssText = 'background:var(--green);color:#000';
+    copyBtn.onclick = () => {
+      createMatchFromImport(data, true);
+      closeModal('confirmModal');
+      copyBtn.remove();
+    };
+    cancelBtn.parentNode.insertBefore(copyBtn, cancelBtn);
+    // Clean up copy button on cancel
+    const origCancel = cancelBtn.onclick;
+    cancelBtn.onclick = () => { copyBtn.remove(); closeModal('confirmModal'); };
+    openModal('confirmModal');
+    return;
+  }
+  createMatchFromImport(data, false);
+}
+
+function parseTimestamp(ts) {
+  if (typeof ts === 'number') return ts;
+  if (typeof ts === 'string') {
+    const parts = ts.split(':');
+    if (parts.length === 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  }
+  return 0;
+}
+
+function applyImportToMatch(match, data) {
+  match.name = data.match;
+  match.date = data.date || '';
+  match.players = data.players.map(p => ({
+    name: p.name,
+    intervals: (p.intervals || []).map(iv => ({
+      id: iv.id || generateIntervalId(),
+      start: parseTimestamp(iv.start),
+      end: parseTimestamp(iv.end),
+      half: iv.half || 1,
+      tags: iv.tags || [],
+      recording: false,
+      startTime: null
+    })),
+    recording: false,
+    startTime: null
+  }));
+  if (data.penalties) match.penalties = data.penalties;
+  save();
+}
+
+function createMatchFromImport(data, isCopy) {
+  const match = {
+    id: Date.now().toString(36),
+    name: isCopy ? data.match + ' (copia)' : data.match,
+    date: data.date || '',
+    players: data.players.map(p => ({
+      name: p.name,
+      intervals: (p.intervals || []).map(iv => ({
+        id: iv.id || Date.now() + Math.random(),
+        start: parseTimestamp(iv.start),
+        end: parseTimestamp(iv.end),
+        half: iv.half || 1,
+        tags: iv.tags || []
+      })),
+      recording: false,
+      startTime: null
+    })),
+    timer1T: 0,
+    timer2T: 0,
+    timerET1: 0,
+    timerET2: 0,
+    penalties: data.penalties || [],
+    currentHalf: 1,
+    running: false,
+    lastTick: null,
+    timeFormat: 'standard'
+  };
+  matches.unshift(match);
+  save();
+  renderHome();
+  toast(isCopy ? 'Copia importada' : 'Partido importado');
+  vibe(20);
 }
 
 // Modal helpers
