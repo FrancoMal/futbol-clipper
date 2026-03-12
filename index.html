@@ -77,9 +77,27 @@ input::placeholder{color:var(--text2)}
 .timer-section{text-align:center;padding:20px 24px 16px;background:var(--surface);margin:0 0 2px}
 .timer-display{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace;font-size:64px;font-weight:700;letter-spacing:2px;line-height:1;margin-bottom:16px;color:var(--text)}
 .timer-controls{display:flex;justify-content:center;gap:10px;align-items:center;flex-wrap:wrap}
-.half-toggle{display:flex;background:var(--surface3);border-radius:10px;overflow:hidden}
-.half-toggle button{padding:10px 20px;font-size:14px;font-weight:600;transition:background .2s,color .2s}
+.half-toggle{display:flex;background:var(--surface3);border-radius:10px;overflow:hidden;flex-wrap:wrap}
+.half-toggle button{padding:10px 14px;font-size:13px;font-weight:600;transition:background .2s,color .2s}
 .half-toggle button.active{background:var(--green);color:#000}
+.half-toggle button.pen-active{background:var(--red);color:#fff}
+
+/* Penalty mode */
+.penalty-section{text-align:center;padding:16px 24px;background:var(--surface);margin:0 0 2px;display:none}
+.penalty-section.visible{display:block}
+.penalty-section h3{font-size:18px;font-weight:700;margin-bottom:12px;color:var(--red)}
+.penalty-result-btns{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+.penalty-result-btns button{padding:10px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:700;transition:all .15s}
+.penalty-result-btns button:active{transform:scale(.95)}
+.pen-gol{background:var(--green);color:#000}
+.pen-atajado{background:#f39c12;color:#000}
+.pen-afuera{background:var(--red2);color:#fff}
+.penalty-log{text-align:left;max-height:200px;overflow-y:auto;margin-top:8px}
+.penalty-log .pen-entry{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:var(--surface2);border-radius:8px;margin-bottom:4px;font-size:13px}
+.penalty-log .pen-result{font-weight:700;padding:2px 8px;border-radius:6px;font-size:12px}
+.pen-result.gol{background:var(--green);color:#000}
+.pen-result.atajado{background:#f39c12;color:#000}
+.pen-result.afuera{background:var(--red2);color:#fff}
 .btn-play{width:52px;height:52px;border-radius:50%;background:var(--green);color:#000;font-size:22px;display:flex;align-items:center;justify-content:center;transition:transform .1s}
 .btn-play:active{transform:scale(.9)}
 .btn-play.running{background:var(--surface3);color:var(--text)}
@@ -199,7 +217,7 @@ input::placeholder{color:var(--text2)}
     <span style="font-size:22px">+</span> Nuevo Partido
   </button>
   <div class="match-list" id="matchList"></div>
-  <div class="version-badge" id="versionBadge">v1.1</div>
+  <div class="version-badge" id="versionBadge">v1.2</div>
 </div>
 
 <!-- MATCH SCREEN -->
@@ -215,6 +233,9 @@ input::placeholder{color:var(--text2)}
       <div class="half-toggle">
         <button id="h1btn" class="active" onclick="setHalf(1)">1T</button>
         <button id="h2btn" onclick="setHalf(2)">2T</button>
+        <button id="hET1btn" onclick="setHalf('ET1')">ET1</button>
+        <button id="hET2btn" onclick="setHalf('ET2')">ET2</button>
+        <button id="hPENbtn" onclick="setHalf('PEN')">PEN</button>
       </div>
       <button class="btn-play" id="playBtn" onclick="toggleTimer()">▶</button>
       <button class="btn-sync" onclick="openSyncModal()">SYNC</button>
@@ -224,6 +245,15 @@ input::placeholder{color:var(--text2)}
       <button id="fmt90" onclick="setTimeFormat('90min')">90min</button>
     </div>
   </div>
+  <div class="penalty-section" id="penaltySection">
+    <h3>⚽ Tanda de Penales</h3>
+    <div class="penalty-result-btns">
+      <button class="pen-gol" onclick="registerPenalty('Gol')">⚽ Gol</button>
+      <button class="pen-atajado" onclick="registerPenalty('Atajado')">🧤 Atajado</button>
+      <button class="pen-afuera" onclick="registerPenalty('Afuera')">❌ Afuera</button>
+    </div>
+    <div class="penalty-log" id="penaltyLog"></div>
+  </div>
   <div class="players-section">
     <div class="section-header">
       <h3>Jugadores</h3>
@@ -231,7 +261,7 @@ input::placeholder{color:var(--text2)}
     </div>
     <div id="playersList"></div>
   </div>
-  <div class="version-badge" id="versionBadgeMatch">v1.1</div>
+  <div class="version-badge" id="versionBadgeMatch">v1.2</div>
 </div>
 
 <!-- NEW MATCH MODAL -->
@@ -350,7 +380,7 @@ input::placeholder{color:var(--text2)}
 
 <script>
 // State
-const APP_VERSION = "1.1";
+const APP_VERSION = "1.2";
 let matches = JSON.parse(localStorage.getItem('fc_matches') || '[]');
 let currentMatchId = null;
 let timerInterval = null;
@@ -395,15 +425,23 @@ const save = () => {
   if (currentMatchId) localStorage.setItem('fc_currentMatch', currentMatchId);
 };
 
+function getTimerKey(half) {
+  const h = half || currentHalf;
+  if (h === 1) return 'timer1T';
+  if (h === 2) return 'timer2T';
+  if (h === 'ET1') return 'timerET1';
+  if (h === 'ET2') return 'timerET2';
+  return 'timer1T';
+}
 function getTimerSeconds() {
   const m = currentMatch();
   if (!m) return 0;
-  return currentHalf === 1 ? (m.timer1T || 0) : (m.timer2T || 0);
+  return m[getTimerKey()] || 0;
 }
 function setTimerSeconds(val) {
   const m = currentMatch();
   if (!m) return;
-  if (currentHalf === 1) m.timer1T = val; else m.timer2T = val;
+  m[getTimerKey()] = val;
 }
 
 function toast(msg) {
@@ -496,6 +534,9 @@ function createMatch() {
     players: chipPlayers.map(p => ({ name: p, intervals: [], recording: false, startTime: null })),
     timer1T: 0,
     timer2T: 0,
+    timerET1: 0,
+    timerET2: 0,
+    penalties: [],
     currentHalf: 1,
     running: false,
     lastTick: null,
@@ -550,13 +591,16 @@ function openMatch(id, skipVibe) {
       if (!iv.tags) iv.tags = [];
     });
   });
+  if (!m.timerET1) m.timerET1 = 0;
+  if (!m.timerET2) m.timerET2 = 0;
+  if (!m.penalties) m.penalties = [];
   currentHalf = m.currentHalf || 1;
   timerRunning = false;
   // Restore running timer
-  if (m.running && m.lastTick) {
+  if (m.running && m.lastTick && currentHalf !== 'PEN') {
     const elapsed = Math.floor((Date.now() - m.lastTick) / 1000);
-    if (currentHalf === 1) m.timer1T = (m.timer1T || 0) + elapsed;
-    else m.timer2T = (m.timer2T || 0) + elapsed;
+    const key = getTimerKey(currentHalf);
+    m[key] = (m[key] || 0) + elapsed;
     m.lastTick = Date.now();
     save();
     startTimer();
@@ -566,6 +610,7 @@ function openMatch(id, skipVibe) {
   updateTimeFormatUI();
   updateTimerDisplay();
   updatePlayBtn();
+  updatePenaltyUI();
   renderPlayers();
   $('home').classList.add('hidden-left');
   $('match').classList.remove('hidden');
@@ -602,8 +647,10 @@ function doGoHome() {
 
 // Timer
 function formatTimer(seconds, half, timeFormat) {
-  if (half === 2 && timeFormat === '90min') {
-    seconds += 2700; // 45 min = 2700 seconds
+  if (timeFormat === '90min') {
+    if (half === 2) seconds += 2700; // +45min
+    else if (half === 'ET1') seconds += 5400; // +90min
+    else if (half === 'ET2') seconds += 6300; // +105min
   }
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -632,6 +679,7 @@ function updateTimeFormatUI() {
 }
 
 function toggleTimer() {
+  if (currentHalf === 'PEN') return;
   vibe(15);
   if (timerRunning) stopTimer(); else startTimer();
 }
@@ -662,6 +710,10 @@ function stopTimer() {
 }
 
 function updateTimerDisplay() {
+  if (currentHalf === 'PEN') {
+    $('timerDisplay').textContent = 'PEN';
+    return;
+  }
   const secs = getTimerSeconds();
   const fmt = getTimeFormat();
   $('timerDisplay').textContent = formatTimer(secs, currentHalf, fmt);
@@ -690,12 +742,39 @@ function setHalf(h) {
   updateHalfUI();
   updateTimerDisplay();
   updatePlayBtn();
+  updatePenaltyUI();
   autoSave();
 }
 
 function updateHalfUI() {
-  $('h1btn').classList.toggle('active', currentHalf === 1);
-  $('h2btn').classList.toggle('active', currentHalf === 2);
+  const halves = [1, 2, 'ET1', 'ET2', 'PEN'];
+  const btnIds = ['h1btn', 'h2btn', 'hET1btn', 'hET2btn', 'hPENbtn'];
+  halves.forEach((h, i) => {
+    const btn = $(btnIds[i]);
+    btn.classList.remove('active', 'pen-active');
+    if (currentHalf === h) {
+      btn.classList.add(h === 'PEN' ? 'pen-active' : 'active');
+    }
+  });
+}
+
+function updatePenaltyUI() {
+  const penSection = $('penaltySection');
+  const timerSection = document.querySelector('.timer-display');
+  const playBtn = $('playBtn');
+  const syncBtn = document.querySelector('.btn-sync');
+  if (currentHalf === 'PEN') {
+    penSection.classList.add('visible');
+    timerSection.style.display = 'none';
+    playBtn.style.display = 'none';
+    syncBtn.style.display = 'none';
+    renderPenaltyLog();
+  } else {
+    penSection.classList.remove('visible');
+    timerSection.style.display = '';
+    playBtn.style.display = '';
+    syncBtn.style.display = '';
+  }
 }
 
 // Sync
@@ -752,7 +831,7 @@ function renderPlayers() {
           <div class="interval-main">
             <div class="interval-times">
               <span>${formatTimer(iv.start, iv.half || 1, fmt)} → ${formatTimer(iv.end, iv.half || 1, fmt)}</span>
-              <span class="interval-half">${iv.half || 1}T</span>
+              <span class="interval-half">${formatHalfLabel(iv.half || 1)}</span>
             </div>
             ${iv.tags && iv.tags.length ? `<div class="interval-tags">
               ${iv.tags.map(t => `<span class="interval-tag" style="background:${t.color}">${esc(t.text)}</span>`).join('')}
@@ -774,16 +853,20 @@ function togglePlayer(i) {
   const p = m.players[i];
   const ts = getTimerSeconds();
   if (p.recording) {
-    p.intervals.push({ id: generateIntervalId(), start: p.startTime, end: ts, half: p.startHalf || currentHalf, tags: [] });
+    const tags = [];
+    if ((p.startHalf || currentHalf) === 'PEN') {
+      tags.push({ text: 'Penal', color: '#e74c3c' });
+    }
+    p.intervals.push({ id: generateIntervalId(), start: p.startTime, end: ts, half: p.startHalf || currentHalf, tags });
     p.recording = false;
     p.startTime = null;
     p.startHalf = null;
-    toast(`Clip guardado para ${p.name}`);
+    toast('Clip guardado para ' + p.name);
   } else {
     p.recording = true;
     p.startTime = ts;
     p.startHalf = currentHalf;
-    if (!timerRunning) startTimer();
+    if (!timerRunning && currentHalf !== 'PEN') startTimer();
   }
   save();
   renderPlayers();
@@ -829,7 +912,9 @@ function stopAllRecordings() {
   const ts = getTimerSeconds();
   m.players.forEach(p => {
     if (p.recording) {
-      p.intervals.push({ id: generateIntervalId(), start: p.startTime, end: ts, half: p.startHalf || currentHalf, tags: [] });
+      const half = p.startHalf || currentHalf;
+      const tags = half === 'PEN' ? [{ text: 'Penal', color: '#e74c3c' }] : [];
+      p.intervals.push({ id: generateIntervalId(), start: p.startTime, end: ts, half, tags });
       p.recording = false;
       p.startTime = null;
       p.startHalf = null;
@@ -878,9 +963,12 @@ function renderEditIntervalsList() {
   $('editIntervalsList').innerHTML = editedIntervals.map((iv, i) => `
     <div class="edit-interval-row">
       <span class="drag-handle">☰</span>
-      <select class="half-select" onchange="updateInterval(${i}, 'half', this.value)">
+      <select class="half-select" onchange="updateInterval(${i}, 'half', this.value)" style="width:60px">
         <option value="1" ${iv.half === 1 ? 'selected' : ''}>1T</option>
         <option value="2" ${iv.half === 2 ? 'selected' : ''}>2T</option>
+        <option value="ET1" ${iv.half === 'ET1' ? 'selected' : ''}>ET1</option>
+        <option value="ET2" ${iv.half === 'ET2' ? 'selected' : ''}>ET2</option>
+        <option value="PEN" ${iv.half === 'PEN' ? 'selected' : ''}>PEN</option>
       </select>
       <input type="text" class="time-input" value="${formatSec(iv.start)}" onchange="updateInterval(${i}, 'start', this.value)" placeholder="00:00">
       <span>→</span>
@@ -896,7 +984,7 @@ function renderEditIntervalsList() {
 
 function updateInterval(idx, field, value) {
   if (field === 'half') {
-    editedIntervals[idx].half = parseInt(value);
+    editedIntervals[idx].half = (value === 'ET1' || value === 'ET2' || value === 'PEN') ? value : parseInt(value);
   } else {
     const parts = value.split(':');
     if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
@@ -1020,7 +1108,7 @@ function openExportModal() { vibe(); openModal('exportModal'); }
 
 function getExportData() {
   const m = currentMatch();
-  return {
+  const data = {
     match: m.name,
     date: m.date,
     appVersion: APP_VERSION,
@@ -1035,6 +1123,10 @@ function getExportData() {
       }))
     }))
   };
+  if (m.penalties && m.penalties.length) {
+    data.penalties = m.penalties;
+  }
+  return data;
 }
 
 function doExport(fmt) {
@@ -1053,10 +1145,17 @@ function doExport(fmt) {
       if (!p.intervals.length) { txt += '  (sin clips)\n'; }
       p.intervals.forEach(iv => {
         const tagsStr = iv.tags.length ? ` [${iv.tags.map(t => t.text).join(', ')}]` : '';
-        txt += `  ${iv.half}T  ${iv.start} → ${iv.end}${tagsStr}\n`;
+        txt += `  ${formatHalfLabel(iv.half || 1)}  ${iv.start} → ${iv.end}${tagsStr}\n`;
       });
       txt += '\n';
     });
+    if (data.penalties && data.penalties.length) {
+      txt += `Tanda de Penales\n${'-'.repeat(20)}\n`;
+      data.penalties.forEach(p => {
+        txt += `  #${p.num}: ${p.result}\n`;
+      });
+      txt += '\n';
+    }
     blob = new Blob([txt], { type: 'text/plain' });
     ext = 'txt';
   }
@@ -1068,7 +1167,51 @@ function doExport(fmt) {
   toast(`${ext.toUpperCase()} exportado`);
 }
 
+// Penalties
+function registerPenalty(result) {
+  vibe(25);
+  const m = currentMatch();
+  if (!m.penalties) m.penalties = [];
+  const num = m.penalties.length + 1;
+  m.penalties.push({ num, result, timestamp: Date.now() });
+  save();
+  renderPenaltyLog();
+  const emoji = result === 'Gol' ? '⚽' : result === 'Atajado' ? '🧤' : '❌';
+  toast('Penal #' + num + ': ' + emoji + ' ' + result);
+}
+
+function renderPenaltyLog() {
+  const m = currentMatch();
+  const logEl = $('penaltyLog');
+  logEl.textContent = '';
+  if (!m || !m.penalties || !m.penalties.length) {
+    const p = document.createElement('p');
+    p.style.cssText = 'text-align:center;color:var(--text2);font-size:13px';
+    p.textContent = 'No hay penales registrados';
+    logEl.appendChild(p);
+    return;
+  }
+  m.penalties.forEach(pen => {
+    const div = document.createElement('div');
+    div.className = 'pen-entry';
+    const label = document.createElement('span');
+    label.textContent = 'Penal #' + pen.num;
+    const res = document.createElement('span');
+    const cls = pen.result === 'Gol' ? 'gol' : pen.result === 'Atajado' ? 'atajado' : 'afuera';
+    res.className = 'pen-result ' + cls;
+    res.textContent = pen.result;
+    div.appendChild(label);
+    div.appendChild(res);
+    logEl.appendChild(div);
+  });
+}
+
 // Utils
+function formatHalfLabel(half) {
+  if (half === 'ET1' || half === 'ET2' || half === 'PEN') return half;
+  return half + 'T';
+}
+
 function formatSec(s) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
